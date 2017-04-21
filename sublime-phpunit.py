@@ -5,6 +5,7 @@ import ntpath
 import subprocess
 import sublime
 import sublime_plugin
+from time import sleep
 
 class PhpunitTestCommand(sublime_plugin.WindowCommand):
     def get_paths(self):
@@ -42,17 +43,37 @@ class PhpunitTestCommand(sublime_plugin.WindowCommand):
         settings = sublime.load_settings("Preferences.sublime-settings")
         terminal_setting = settings.get('phpunit-sublime-terminal', 'Terminal')
 
+        autofocus = settings.get('phpunit-sublime-autofocus', False)
+        autofocus_delay = settings.get('phpunit-sublime-autofocus-delay', 250)
+
         osascript_command = 'osascript '
 
         if terminal_setting == 'iTerm':
-            osascript_command += '"' + os.path.dirname(os.path.realpath(__file__)) + '/open_iterm.applescript"'
+            osascript_command += self.path_to('open_iterm.applescript')
             osascript_command += ' "' + command + '"'
         else:
-            osascript_command += '"' + os.path.dirname(os.path.realpath(__file__)) + '/run_command.applescript"'
+            osascript_command += self.path_to('run_command.applescript')
             osascript_command += ' "' + command + '"'
             osascript_command += ' "PHPUnit Tests"'
 
         os.system(osascript_command)
+
+        if (autofocus):
+            self.autofocus_sublime(autofocus_delay)
+
+    def autofocus_sublime(self, delay):
+        if delay > 0:
+            sleep(delay / 1000.0)
+
+        os.system(self.build_autofocus_cmd())
+
+    def build_autofocus_cmd(self):
+        osascript_cmd = 'osascript '
+        osascript_cmd += self.path_to('tab_to_sublime.applescript')
+        return osascript_cmd
+
+    def path_to(self, file):
+        return '"' + os.path.dirname(os.path.realpath(__file__)) + '/' + file + '"'
 
 class RunPhpunitTestCommand(PhpunitTestCommand):
 
@@ -116,4 +137,3 @@ class FindMatchingTestCommand(sublime_plugin.WindowCommand):
         self.window.run_command("show_overlay", {"overlay": "goto", "show_files": "true"})
         self.window.run_command("focus_group", {"group": 0})
         self.window.run_command("focus_group", {"group": tab_target})
-
